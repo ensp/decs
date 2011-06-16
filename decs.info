@@ -1,0 +1,10 @@
+; $Id$
+name = DeCS
+description = Painel interativo para seleção dos Descritores em Ciências da Saúde (DeCS).
+core = 6.x
+version = alpha 1
+
+project = "decs"
+package = ENSP
+dependencies[] = content
+dependencies[] = text
