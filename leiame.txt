@@ -3,4 +3,5 @@ Instruções:
 
 1) Instalar e habilitar o módulo decs para Drupal 6;
 2) Adicionar um campo de texto do tipo "Text Field" ao conteúdo que será indexado com DeCS;
-3) Pronto!
+3) O label do campo pode ser de livre escolha, porêm, o nome do campo (field name) deve ser: decs_module 
+4) Pronto!
