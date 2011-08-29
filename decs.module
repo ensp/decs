@@ -48,9 +48,11 @@ function decs_tree($treeId) {
 
 function _decs_getDescriptorsByWords($words) {
 	
+        global $language;
+
 	//$xmlFile = simplexml_load_file('http://decs.bvs.br/cgi-bin/mx/cgi=@vmx/decs/?bool=' . urlencode($words));
 	
-	$xmlFile = _decs_getXML('http://decs.bvs.br/cgi-bin/mx/cgi=@vmx/decs/?bool=' . urlencode($words));
+	$xmlFile = _decs_getXML('http://decs.bvs.br/cgi-bin/mx/cgi=@vmx/decs/?bool=' . urlencode($words) .'&lang='.$language->language);
 	$xmlTree = $xmlFile->xpath("/decsvmx/decsws_response");	
 	
 	$descriptors = array();
@@ -65,14 +67,16 @@ function _decs_getDescriptorsByWords($words) {
 }
 
 function _decs_getDescriptorsByTreeId($treeId) {
+        
+        global $language;
 	
 	//$xmlFile = simplexml_load_file('http://decs.bvs.br/cgi-bin/mx/cgi=@vmx/decs?tree_id=' . $treeId);
 	
 	$xmlFile = _decs_getXML('http://decs.bvs.br/cgi-bin/mx/cgi=@vmx/decs?tree_id=' . $treeId);
 	
-	$term = $xmlFile->xpath("/decsvmx/decsws_response/tree/self/term_list[@lang='pt']/term");
+	$term = $xmlFile->xpath("/decsvmx/decsws_response/tree/self/term_list[@lang='".$language->language."']/term");
 	$definition = $xmlFile->xpath("/decsvmx/decsws_response/record_list/record/definition/occ/@n");
-	$descendants = $xmlFile->xpath("/decsvmx/decsws_response/tree/descendants/term_list[@lang='pt']/term");
+	$descendants = $xmlFile->xpath("/decsvmx/decsws_response/tree/descendants/term_list[@lang='".$language->language."']/term");
 	
 	$descriptors = array();	
 	
@@ -88,14 +92,15 @@ function _decs_getDescriptorsByTreeId($treeId) {
 }
 
 function _decs_getXML($url) {
-	
 	$ch = curl_init();
 	$timeout = 5; // set to zero for no timeout
 	curl_setopt ( $ch, CURLOPT_URL, $url);
 	curl_setopt ( $ch, CURLOPT_RETURNTRANSFER, 1 );
+	//curl_setopt($ch, CURLOPT_HTTPPROXYTUNNEL, 1);
+        //curl_setopt($ch,CURLOPT_PROXY,'');
+        //curl_setopt($ch,CURLOPT_PROXYUSERPWD,'');
 	curl_setopt ( $ch, CURLOPT_CONNECTTIMEOUT, $timeout );
 	$file_contents = curl_exec($ch);
 	curl_close($ch);
-
 	return new SimpleXMLElement($file_contents);
 }
