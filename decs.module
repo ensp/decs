@@ -1,5 +1,5 @@
 <?php
-// $Id$
+// Decs Field Module
 
 function decs_init() {
 	  
@@ -15,23 +15,23 @@ function decs_init() {
 
 function decs_menu() {
 	
-	$items['decs/words/%'] = array(
-	'title' => 'Decs AJAX Gateway',
-	'page callback' => 'decs_words',
-	'page arguments' => array(2),
-	'access arguments' => array(t('access content')),
-	'type' => MENU_CALLBACK,
-	);
+  $items['decs/words/%'] = array(
+    'title' => 'Decs AJAX Gateway',
+    'page callback' => 'decs_words',
+    'page arguments' => array(2),
+    'access arguments' => array(t('access content')),
+    'type' => MENU_CALLBACK,
+  );
 
-	$items['decs/tree/%'] = array(
-	'title' => 'Decs AJAX Gateway',
-	'page callback' => 'decs_tree',
-	'page arguments' => array(2),
-	'access arguments' => array(t('access content')),
-	'type' => MENU_CALLBACK,
-	);
-		
-	return $items;	
+  $items['decs/tree/%'] = array(
+    'title' => 'Decs AJAX Gateway',
+    'page callback' => 'decs_tree',
+    'page arguments' => array(2),
+    'access arguments' => array(t('access content')),
+    'type' => MENU_CALLBACK,
+  );
+	
+  return $items;	
 }
 
 function decs_words($words) {		
@@ -46,32 +46,35 @@ function decs_tree($treeId) {
 	print _decs_getDescriptorsByTreeId($treeId);		
 }
 
+/**
+ * Get the descriptors by words from decs.bvs.br
+ *
+ */
 function _decs_getDescriptorsByWords($words) {
-	
-        global $language;
+  // get the drupal language ex.: en , pt-br
+  global $language;
 
-	//$xmlFile = simplexml_load_file('http://decs.bvs.br/cgi-bin/mx/cgi=@vmx/decs/?bool=' . urlencode($words));
-	
-	$xmlFile = _decs_getXML('http://decs.bvs.br/cgi-bin/mx/cgi=@vmx/decs/?bool=' . urlencode($words) .'&lang='.$language->language);
-	$xmlTree = $xmlFile->xpath("/decsvmx/decsws_response");	
-	
-	$descriptors = array();
-	
-	foreach($xmlTree as $node){		
-		$descriptors[(string) $node->tree->self->term_list->term] = array('tree_id'=>(string) $node['tree_id']);		
-		foreach($node->record_list->record->synonym_list->synonym as $synonym)
-			$descriptors[(string) $synonym] = array('tree_id'=>(string) $node['tree_id']);		
-	}
-		
-	print drupal_json(array('descriptors'=>$descriptors));
+  $xmlFile = _decs_getXML('http://decs.bvs.br/cgi-bin/mx/cgi=@vmx/decs/?bool=' . urlencode($words) .'&lang='.$language->language);
+  $xmlTree = $xmlFile->xpath("/decsvmx/decsws_response");	
+
+  $descriptors = array();
+
+  foreach($xmlTree as $node){		
+	  $descriptors[(string) $node->tree->self->term_list->term] = array('tree_id'=>(string) $node['tree_id']);		
+	  foreach($node->record_list->record->synonym_list->synonym as $synonym)
+		  $descriptors[(string) $synonym] = array('tree_id'=>(string) $node['tree_id']);		
+  }
+
+  print drupal_json(array('descriptors'=>$descriptors));
 }
 
+/**
+ * Get the descriptors by tree id from decs.bvs
+ */
 function _decs_getDescriptorsByTreeId($treeId) {
-        
-        global $language;
-	
-	//$xmlFile = simplexml_load_file('http://decs.bvs.br/cgi-bin/mx/cgi=@vmx/decs?tree_id=' . $treeId);
-	
+  // get the drupal language ex.: en , pt-br
+  global $language;
+ 
 	$xmlFile = _decs_getXML('http://decs.bvs.br/cgi-bin/mx/cgi=@vmx/decs?tree_id=' . $treeId);
 	
 	$term = $xmlFile->xpath("/decsvmx/decsws_response/tree/self/term_list[@lang='".$language->language."']/term");
@@ -80,10 +83,11 @@ function _decs_getDescriptorsByTreeId($treeId) {
 	
 	$descriptors = array();	
 	
-	foreach($descendants as $descendant)		
+	foreach($descendants as $descendant){
 		$descriptors[(string) $descendant] = array('tree_id'=>(string) $descendant['tree_id']);			
-	
-	$result = array();		
+	}
+
+	$result = array();
 	$result['definition'] = (string) $definition[0];
 	$result['term'] = (string) $term[0];
 	$result['descriptors'] = $descriptors;
@@ -91,14 +95,16 @@ function _decs_getDescriptorsByTreeId($treeId) {
 	print drupal_json(array('result'=>$result));	
 }
 
+/**
+ * Get a xml with curl
+ * @param string $url
+ *  url to do the request
+ */
 function _decs_getXML($url) {
 	$ch = curl_init();
 	$timeout = 5; // set to zero for no timeout
 	curl_setopt ( $ch, CURLOPT_URL, $url);
 	curl_setopt ( $ch, CURLOPT_RETURNTRANSFER, 1 );
-	//curl_setopt($ch, CURLOPT_HTTPPROXYTUNNEL, 1);
-        //curl_setopt($ch,CURLOPT_PROXY,'');
-        //curl_setopt($ch,CURLOPT_PROXYUSERPWD,'');
 	curl_setopt ( $ch, CURLOPT_CONNECTTIMEOUT, $timeout );
 	$file_contents = curl_exec($ch);
 	curl_close($ch);
