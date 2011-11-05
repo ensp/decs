@@ -3,18 +3,22 @@
 
 function decs_init() {
   
-  drupal_add_js(drupal_get_path('module', 'decs') . '/decs.js'); 	
+  drupal_add_js(drupal_get_path('module', 'decs') . '/decs.js');
   drupal_add_css(drupal_get_path('module', 'decs') . '/theme/decs.css');
 
-  $words_uri = url('decs/words', array('absolute' => TRUE)); 	  	 	
+  $words_uri = url('decs/words', array('absolute' => TRUE));
   drupal_add_js(array('decs' => array('words_uri' => $words_uri)), 'setting');
 
-  $tree_uri = url('decs/tree', array('absolute' => TRUE));	
-  drupal_add_js(array('decs' => array('tree_uri' => $tree_uri)), 'setting');	
+  $tree_uri = url('decs/tree', array('absolute' => TRUE));
+  drupal_add_js(array('decs' => array('tree_uri' => $tree_uri)), 'setting');
+
+  $language_words = _decs_get_language_words();
+  drupal_add_js(array('decs' => array('language_words' => $language_words)), 'setting');  
+  
 }
 
 function decs_menu() {
-	
+
   $items['decs/words/%'] = array(
     'title' => 'Decs AJAX Gateway',
     'page callback' => 'decs_words',
@@ -30,61 +34,113 @@ function decs_menu() {
     'access arguments' => array(t('access content')),
     'type' => MENU_CALLBACK,
   );
-	
-  return $items;	
+
+  return $items;
 }
 
-function decs_words($words) {		
-	
+function decs_words($words) {
+
   drupal_set_header('Content-Type: text/plain; charset: utf-8');
-  print _decs_getDescriptorsByWords($words);		
+  print _decs_getDescriptorsByWords($words);
 }
 
-function decs_tree($treeId) {		
-	
+function decs_tree($treeId) {
+
   drupal_set_header('Content-Type: text/plain; charset: utf-8');
-  print _decs_getDescriptorsByTreeId($treeId);		
+  print _decs_getDescriptorsByTreeId($treeId);
 }
 
-/**
+/*
  * Get the descriptors by words from decs.bvs.br
  *
  */
 function _decs_getDescriptorsByWords($words) {
-  // get the drupal language ex.: en , pt-br
-  global $language;
+  
+  $lang = _decs_get_language();
 
-  $xmlFile = _decs_getXML('http://decs.bvs.br/cgi-bin/mx/cgi=@vmx/decs/?bool=' . urlencode($words) .'&lang='.$language->language);
-  $xmlTree = $xmlFile->xpath("/decsvmx/decsws_response");	
+  $xmlFile = _decs_getXML('http://decs.bvs.br/cgi-bin/mx/cgi=@vmx/decs/?bool=' . urlencode($words) .'&lang='.$lang);
+  $xmlTree = $xmlFile->xpath("/decsvmx/decsws_response");
 
   $descriptors = array();
 
-  foreach($xmlTree as $node){		
-    $descriptors[(string) $node->tree->self->term_list->term] = array('tree_id'=>(string) $node['tree_id']);		
-    foreach($node->record_list->record->synonym_list->synonym as $synonym)
-      $descriptors[(string) $synonym] = array('tree_id'=>(string) $node['tree_id']);		
+  foreach($xmlTree as $node){
+    $descriptors[(string) $node->tree->self->term_list->term] = array('tree_id'=>(string) $node['tree_id']);
+    foreach($node->record_list->record->synonym_list->synonym as $synonym){
+      $descriptors[(string) $synonym] = array('tree_id'=>(string) $node['tree_id']);
+    }
   }
 
   print drupal_json(array('descriptors'=>$descriptors));
 }
 
+/*
+ * Get the decs languages using the drupal current language
+ * @return string
+ */
+function _decs_get_language(){
+  // get the drupal language ex.: en , pt-br
+  global $language;
+  
+  switch ( $language->language ) {
+    case 'en':
+      $lang = 'en';
+      break;
+    case 'es':
+      $lang = 'es';
+      break;
+    default:
+      $lang = 'pt';
+  }
+
+  return $lang;
+}
+
+/**
+ * Return the words for decs field interface
+ * @return array
+ */
+function _decs_get_language_words(){
+  
+  $words = array(
+    //interface
+    'select_descriptors' => t('Select descriptors'),
+    'search' => t('Search') ,
+    'no_descriptor_selected' => t('No selected descriptor') ,
+    'one_descriptor_selected' => t('1 selected descriptor') ,
+    'descriptors_selected' => t('selected descriptors'),
+    'search_term' => t('Search term'),
+    'no_descriptors_found' => t('no descriptors found') ,
+    'descriptors_found' => t('descriptors found: '),
+    'timeout' => t('Could not connect to the service DeCS, the Internet connection may be unstable at this time.'),
+    
+    // Messages
+    'field_empty' => t('The field is empty'),
+    'has_been_selected:' => t('has been selected'),
+    'descendent_descriptor' => t('descendent descriptor'),
+    'descendents_descriptors' => t('descendents descriptors'),
+  );
+  
+  return $words;
+}
+
+
 /**
  * Get the descriptors by tree id from decs.bvs
  */
 function _decs_getDescriptorsByTreeId($treeId) {
-  // get the drupal language ex.: en , pt-br
-  global $language;
-
-  $xmlFile = _decs_getXML('http://decs.bvs.br/cgi-bin/mx/cgi=@vmx/decs?tree_id=' . $treeId);
-
-  $term = $xmlFile->xpath("/decsvmx/decsws_response/tree/self/term_list[@lang='".$language->language."']/term");
+  
+  $lang = _decs_get_language();
+  
+  $xmlFile = _decs_getXML('http://decs.bvs.br/cgi-bin/mx/cgi=@vmx/decs?tree_id=' . $treeId . '&lang=' . $lang);
+ 
+  $term = $xmlFile->xpath("/decsvmx/decsws_response/tree/self/term_list[@lang='".$lang."']/term");
   $definition = $xmlFile->xpath("/decsvmx/decsws_response/record_list/record/definition/occ/@n");
-  $descendants = $xmlFile->xpath("/decsvmx/decsws_response/tree/descendants/term_list[@lang='".$language->language."']/term");
+  $descendants = $xmlFile->xpath("/decsvmx/decsws_response/tree/descendants/term_list[@lang='".$lang."']/term");
 
-  $descriptors = array();	
+  $descriptors = array();
 
   foreach($descendants as $descendant){
-    $descriptors[(string) $descendant] = array('tree_id'=>(string) $descendant['tree_id']);			
+    $descriptors[(string) $descendant] = array('tree_id'=>(string) $descendant['tree_id']);
   }
 
   $result = array();
@@ -92,7 +148,7 @@ function _decs_getDescriptorsByTreeId($treeId) {
   $result['term'] = (string) $term[0];
   $result['descriptors'] = $descriptors;
 
-  print drupal_json(array('result'=>$result));	
+  print drupal_json(array('result'=>$result));
 }
 
 /**
@@ -103,10 +159,14 @@ function _decs_getDescriptorsByTreeId($treeId) {
 function _decs_getXML($url) {
   $ch = curl_init();
   $timeout = 5; // set to zero for no timeout
+  curl_setopt ( $ch, CURLOPT_HTTPPROXYTUNNEL, 1 );
+  curl_setopt ( $ch, CURLOPT_PROXY, '' );
+  curl_setopt ( $ch, CURLOPT_PROXYUSERPWD, '' ); 
   curl_setopt ( $ch, CURLOPT_URL, $url);
   curl_setopt ( $ch, CURLOPT_RETURNTRANSFER, 1 );
   curl_setopt ( $ch, CURLOPT_CONNECTTIMEOUT, $timeout );
   $file_contents = curl_exec($ch);
   curl_close($ch);
+
   return new SimpleXMLElement($file_contents);
 }
